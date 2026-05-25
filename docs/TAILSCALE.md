@@ -1,13 +1,8 @@
 # + remote access — Tailscale path
 
-> Return to [Setup Guide](SETUP.md) · See also [+ remote access overview / Cloudflared path](REMOTE-ACCESS.md)
+> Return to [Setup Guide](SETUP.md) · For the public-HTTPS path, see [Cloudflared](REMOTE-ACCESS.md)
 
-The Tailscale path of `+ remote access`. Reach your whole LAN (Pi-hole, `*.lan` domains, admin UIs, Home Assistant, the NAS) from anywhere — including hotel WiFi, mobile data, or networks behind CGNAT.
-
-**Cloudflared vs Tailscale — when to use which:**
-- **Cloudflared** path publishes specific HTTP services (Jellyfin, Seerr) to the *public internet* via your domain.
-- **Tailscale** path gives *you* (and devices you authorise) *private* access to the entire LAN — including admin UIs you'd never expose publicly.
-- Two paths under the same `+ remote access` tier, combinable. Run either or both.
+Reach your whole LAN (Pi-hole, `*.lan` domains, admin UIs, Home Assistant, the NAS) from anywhere — including hotel WiFi, mobile data, or networks behind CGNAT.
 
 **Requirements:**
 - Free [Tailscale](https://tailscale.com) account (up to 100 devices, personal use)

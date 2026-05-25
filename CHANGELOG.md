@@ -11,8 +11,8 @@ All notable changes to this project will be documented in this file.
 - **Tailscale subnet router** (optional): new `docker-compose.tailscale.yml` and [docs/TAILSCALE.md](docs/TAILSCALE.md) for reaching the whole LAN (Pi-hole, `*.lan` domains, admin UIs, Home Assistant) from anywhere — including hotel WiFi and CGNAT networks where IPv4 inbound is unavailable. Pinned to `tailscale/tailscale:v1.98.3`, runs as a host-network container with `NET_ADMIN`, advertises `LAN_SUBNET` from `.env`. Complementary to Cloudflared, not a replacement
 
 ### Documentation
-- **`+ remote access` reframed as one tier with two combinable paths** — Cloudflared (public HTTPS for Jellyfin/Seerr) and Tailscale (private mesh VPN for the whole LAN). Replaces the briefly-shipped four-tier framing where Tailscale was its own top-level setup option. Updated across SETUP.md (TOC, Choose Your Setup table, requirements, component table, files-to-edit block, compose-files table, dedicated section), README.md (Choose Your Setup table + docs links), REMOTE-ACCESS.md (umbrella intro at top), TAILSCALE.md (intro reflects the umbrella framing), REFERENCE.md (path-tagged subsections), ARCHITECTURE.md (single merged "+ REMOTE ACCESS" block in the access-levels diagram with both paths). MAINTENANCE.md keeps "Tailscale (independent)" as a separate operational section
-- **REMOTE-ACCESS.md**: footer hint at the bottom of the Cloudflared walkthrough now links to TAILSCALE.md instead of saying "setup not covered here"
+- **`+ remote access` reframed as one tier with two combinable paths** — Cloudflared (public HTTPS for Jellyfin/Seerr) and Tailscale (private mesh VPN for the whole LAN). Updated across SETUP, README, REMOTE-ACCESS, TAILSCALE, REFERENCE, ARCHITECTURE. The decision point lives in SETUP.md's "+ remote access" section; per-path docs are scoped to that path with a brief cross-link to the other
+- **REMOTE-ACCESS.md**: now scoped to the Cloudflared path, with a one-line callout pointing to TAILSCALE.md for the alternate path
 
 ---
 

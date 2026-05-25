@@ -27,13 +27,9 @@ Decide how you'll access your media stack:
 |-------|----------------|-------------------|----------|
 | **Core** | `192.168.1.50:8096` | Just `.env` + VPN credentials | Testing, single user |
 | **+ local DNS** | `jellyfin.lan` | Configure Pi-hole + add Traefik | Home/family use |
-| **+ remote access** | `jellyfin.yourdomain.com` (Cloudflared) and/or `sonarr.lan` from anywhere (Tailscale) | Cloudflare Tunnel and/or Tailscale | Watch/request from anywhere |
+| **+ remote access** | URLs work from outside your home | Add Cloudflare Tunnel and/or Tailscale | Watch/manage from anywhere |
 
 **You can start simple and add features later.** The guide has checkpoints so you can stop at any level.
-
-**`+ remote access` has two combinable paths** — pick one or both:
-- **a) Cloudflared** — public HTTPS for Jellyfin/Seerr via your domain (`jellyfin.yourdomain.com`). Best for sharing streaming with non-technical users.
-- **b) Tailscale** — private mesh VPN that exposes your whole LAN (admin UIs, `*.lan` domains) to just you and devices you authorise. Free, works behind CGNAT, doesn't need a domain.
 
 ---
 
