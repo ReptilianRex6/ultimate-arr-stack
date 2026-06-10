@@ -23,18 +23,17 @@ Therapy-stack local repo: `/Users/adamknowles/dev/n8n Therapybot/Git repo/`
 
 ## Deploying to the NAS
 
-Deploy via git only — never SCP files, never edit compose on the NAS directly, never `docker stop` + ad-hoc `docker run` to "pre-test" against live state.
+**The rule (no exceptions): every code change — even a trivial patch image bump — MUST be tested on the NAS and confirmed working BEFORE it is committed or pushed.** There is no "trivial" fast-path that skips NAS testing.
 
-**Classify the change first — this determines the flow:**
+Order, always:
 
-- **Trivial patch image bump** (e.g. cloudflared point release): commit + push to `main` → on NAS `git pull --ff-only` → `docker compose -f <file>.yml up -d` → verify.
-- **Risky change** — anything that can fail or migrate data: **minor/major version bumps (especially with a DB migration, e.g. Seerr 3.2 → 3.3), env / network / volume changes.** Verify on the NAS *before* it reaches `main`:
-  1. Commit to a **feature branch**, push the branch (not `main`).
-  2. On NAS: `git fetch && git checkout <branch>`, then recreate the affected service.
-  3. **Verify it's actually healthy on the NAS** (container healthy, API responds, migration clean).
-  4. Only then fast-forward `main` and push `main`; check `main` out again on the NAS.
+1. Make the change locally.
+2. Apply it on the NAS and recreate the affected service(s).
+3. **Verify on the NAS:** container healthy, API/UI responds, migration clean, and `npm run test:e2e` where relevant.
+4. Only once it's confirmed working on the NAS → commit, then push. (The committed change matches what's already running on the NAS.)
+5. If it fails verification → fix or discard. Nothing untested ever reaches git.
 
-The push to `main` comes **after** the NAS proves the change works — not before. If unsure which bucket a change is in, treat it as risky and branch-test first. Back up the service's config volume before any version bump with a migration (`docker run --rm -v <vol>:/src:ro -v <dir>:/bak alpine tar czf /bak/<svc>-config-backup-<stamp>.tgz -C /src .`). Roll back with `git revert` (or `git checkout main`) → pull → recreate.
+Back up a service's config volume before any version bump with a DB migration (`docker run --rm -v <vol>:/src:ro -v <dir>:/bak alpine tar czf /bak/<svc>-config-backup-<stamp>.tgz -C /src .`). Never `docker stop` + ad-hoc `docker run` against a live container's static IP to test — apply the change through compose so the test reflects the real config.
 
 ## E2E Tests
 
