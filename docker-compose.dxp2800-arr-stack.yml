@@ -1,0 +1,186 @@
+# Ethan's UGREEN DXP2800 ARR stack
+# Folders expected on NAS:
+#   /volume1/data/media/tv
+#   /volume1/data/media/movies
+#   /volume1/data/torrents/tv
+#   /volume1/data/torrents/movies
+#   /volume1/data/torrents/incomplete
+#   /volume1/docker/arr-stack/config/<service>
+
+networks:
+  arr-stack:
+    name: arr-stack
+    driver: bridge
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-lsio-common: &lsio-common
+  environment:
+    - PUID=${PUID}
+    - PGID=${PGID}
+    - TZ=${TZ}
+  restart: unless-stopped
+  logging: *default-logging
+  networks:
+    - arr-stack
+
+services:
+  # VPN gateway for torrent/indexer traffic.
+  # qBittorrent, Prowlarr, and FlareSolverr share this container's network.
+  gluetun:
+    image: qmcgaw/gluetun:v3.41
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=${VPN_COUNTRIES}
+      - TZ=${TZ}
+      - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET},172.20.0.0/16
+      # For NordVPN, this is commonly used to avoid DNS weirdness/leaks.
+      - DNS_ADDRESS=${VPN_DNS_ADDRESS}
+    volumes:
+      - ${NAS_STACK_DIR}/config/gluetun:/gluetun
+    ports:
+      - "8085:8085"   # qBittorrent Web UI
+      - "9696:9696"   # Prowlarr
+      - "8191:8191"   # FlareSolverr
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - arr-stack
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8085
+    volumes:
+      - ${NAS_STACK_DIR}/config/qbittorrent:/config
+      - ${MEDIA_ROOT}:/data
+    restart: unless-stopped
+    logging: *default-logging
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${NAS_STACK_DIR}/config/prowlarr:/config
+    restart: unless-stopped
+    logging: *default-logging
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+    restart: unless-stopped
+    logging: *default-logging
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    <<: *lsio-common
+    ports:
+      - "8989:8989"
+    volumes:
+      - ${NAS_STACK_DIR}/config/sonarr:/config
+      - ${MEDIA_ROOT}:/data
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    <<: *lsio-common
+    ports:
+      - "7878:7878"
+    volumes:
+      - ${NAS_STACK_DIR}/config/radarr:/config
+      - ${MEDIA_ROOT}:/data
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    <<: *lsio-common
+    ports:
+      - "8096:8096"
+      - "7359:7359/udp"
+      - "1900:1900/udp"
+    devices:
+      # Intel Quick Sync hardware transcoding. Comment this out if /dev/dri does not exist.
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${RENDER_GROUP_ID:-0}"
+    volumes:
+      - ${NAS_STACK_DIR}/config/jellyfin:/config
+      - ${MEDIA_ROOT}/media:/data/media:ro
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - arr-stack
+    ports:
+      - "5055:5055"
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+      - PORT=5055
+    volumes:
+      - ${NAS_STACK_DIR}/config/seerr:/app/config
+    depends_on:
+      - sonarr
+      - radarr
+      - jellyfin
+
+  # Optional but included because you wanted it.
+  # Easiest path: set TS_AUTHKEY in .env, then run:
+  #   docker compose --profile tailscale up -d
+  # Better path if UGOS supports it: install Tailscale directly on the NAS instead.
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    profiles:
+      - tailscale
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_HOSTNAME=${TS_HOSTNAME}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_EXTRA_ARGS=${TS_EXTRA_ARGS}
+    volumes:
+      - ${NAS_STACK_DIR}/config/tailscale:/var/lib/tailscale
+    restart: unless-stopped
+    logging: *default-logging
